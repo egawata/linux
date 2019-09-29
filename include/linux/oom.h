@@ -34,6 +34,13 @@ struct oom_control {
 	nodemask_t *nodemask;
 
 	/* Memory cgroup in which oom is invoked, or NULL for global oom */
+    /*
+     * cgroup は、プロセスグループのリソース(CPU, memory, etc)を制限するための
+     * linux カーネルの仕組み。
+     * 例としてコンテナ
+     * OOM killer の対象をシステム全体にするか、cgroup内にするかを
+     * ここで指定する
+     */
 	struct mem_cgroup *memcg;
 
 	/* Used to determine cpuset and node locality requirement */

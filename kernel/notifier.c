@@ -315,10 +315,11 @@ int __blocking_notifier_call_chain(struct blocking_notifier_head *nh,
 	 * is, we re-check the list after having taken the lock anyway:
 	 */
 	if (rcu_access_pointer(nh->head)) {
-		down_read(&nh->rwsem);
+		down_read(&nh->rwsem);  // read lock を取得する
+        // 登録済みの notifier すべてに通知を送る
 		ret = notifier_call_chain(&nh->head, val, v, nr_to_call,
 					nr_calls);
-		up_read(&nh->rwsem);
+		up_read(&nh->rwsem);    //  read lock を解放する
 	}
 	return ret;
 }

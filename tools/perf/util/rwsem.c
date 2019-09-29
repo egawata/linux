@@ -12,11 +12,13 @@ int exit_rwsem(struct rw_semaphore *sem)
 	return pthread_rwlock_destroy(&sem->lock);
 }
 
+// down_read は read lock を取得する
 int down_read(struct rw_semaphore *sem)
 {
 	return perf_singlethreaded ? 0 : pthread_rwlock_rdlock(&sem->lock);
 }
 
+// up_read は read lock を解放する
 int up_read(struct rw_semaphore *sem)
 {
 	return perf_singlethreaded ? 0 : pthread_rwlock_unlock(&sem->lock);

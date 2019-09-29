@@ -81,6 +81,7 @@ static inline bool is_memcg_oom(struct oom_control *oc)
  *
  * This function is assuming oom-killer context and 'current' has triggered
  * the oom-killer.
+ * この記述から current というのは、OOM killer を発動させる原因となった task と思われる
  */
 static bool oom_cpuset_eligible(struct task_struct *start,
 				struct oom_control *oc)
@@ -805,6 +806,8 @@ static inline bool __task_will_free_mem(struct task_struct *task)
  * sharing the same mm have to be killed or exiting.
  * Caller has to make sure that task->mm is stable (hold task_lock or
  * it operates on the current).
+ * このタスクがもうすぐkillされ、メモリを解放しそうかどうかをチェックする
+ * その場合、関連する thread や process も kill され終了することを意味する
  */
 static bool task_will_free_mem(struct task_struct *task)
 {
@@ -816,6 +819,7 @@ static bool task_will_free_mem(struct task_struct *task)
 	 * Skip tasks without mm because it might have passed its exit_mm and
 	 * exit_oom_victim. oom_reaper could have rescued that but do not rely
 	 * on that for now. We can consider find_lock_task_mm in future.
+     * mm は memory management ?
 	 */
 	if (!mm)
 		return false;
@@ -826,10 +830,16 @@ static bool task_will_free_mem(struct task_struct *task)
 	/*
 	 * This task has already been drained by the oom reaper so there are
 	 * only small chances it will free some more
+     * MMF_OOM_SKIP とは、mm がこのタスクを OOM killer の対象外と考えていることを表すフラグ
+     * $mm->flags でその bit が立っていたらこの task は oom 対象からはずす
 	 */
 	if (test_bit(MMF_OOM_SKIP, &mm->flags))
 		return false;
 
+    /*
+     * mm->mm_users は mm_struct のフィールドの1つで、このタスクを
+     * 使用している user の数
+     */
 	if (atomic_read(&mm->mm_users) <= 1)
 		return true;
 
@@ -1019,6 +1029,9 @@ static void check_panic_on_oom(struct oom_control *oc)
 
 static BLOCKING_NOTIFIER_HEAD(oom_notify_list);
 
+// notifier_block を登録する
+// notifier_block は、コールバック関数と、次の notifier_block へのポインタ、
+// priority を持つ。
 int register_oom_notifier(struct notifier_block *nb)
 {
 	return blocking_notifier_chain_register(&oom_notify_list, nb);
@@ -1047,7 +1060,10 @@ bool out_of_memory(struct oom_control *oc)
 	if (oom_killer_disabled)
 		return false;
 
-	if (!is_memcg_oom(oc)) {
+	if (!is_memcg_oom(oc)) {    // oom の対象 = 特定の cgroupではなく global の場合
+        // oom が発生したときに実行するコールバックを複数登録しておくことができる
+        // (登録先は blocking notifier chain とよばれる)
+        // ここで登録済みコールバックをすべて実行する
 		blocking_notifier_call_chain(&oom_notify_list, 0, &freed);
 		if (freed > 0)
 			/* Got some memory back in the last second. */
@@ -1058,6 +1074,9 @@ bool out_of_memory(struct oom_control *oc)
 	 * If current has a pending SIGKILL or is exiting, then automatically
 	 * select it.  The goal is to allow it to allocate so that it may
 	 * quickly exit and free its memory.
+     * もし oom killer の原因となった task(current) がもうすぐ終了しそうなら、
+     * 何もしないでそのまま待っていれば良い。
+     * まず終了しそうかどうかを判定する
 	 */
 	if (task_will_free_mem(current)) {
 		mark_oom_victim(current);

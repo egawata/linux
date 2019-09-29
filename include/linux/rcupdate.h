@@ -400,6 +400,7 @@ do {									      \
 
 /**
  * rcu_access_pointer() - fetch RCU pointer with no dereferencing
+ * RCU = read-update-copy 排他制御の一種
  * @p: The pointer to read
  *
  * Return the value of the specified RCU-protected pointer, but omit the

@@ -22,6 +22,7 @@
  *		context. Callouts are not allowed to block.
  *	Blocking notifier chains: Chain callbacks run in process context.
  *		Callouts are allowed to block.
+ *		ブロック可能なコールバックの notifier chain
  *	Raw notifier chains: There are no restrictions on callbacks,
  *		registration, or unregistration.  All locking and protection
  *		must be provided by the caller.
